@@ -1,17 +1,18 @@
-// import * as cdk from 'aws-cdk-lib/core';
-// import { Template } from 'aws-cdk-lib/assertions';
-// import * as LogsAnomalyDetectorCdk from '../lib/logs-anomaly-detector-cdk-stack';
+import { Template } from 'aws-cdk-lib/assertions';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { LogsAnomalyDetectorCdkStack } from '../lib/logs-anomaly-detector-cdk-stack';
+import { createTestApp } from './test-utils';
 
-// example test. To run these tests, uncomment this file along with the
-// example resource in lib/logs-anomaly-detector-cdk-stack.ts
-test('SQS Queue Created', () => {
-//   const app = new cdk.App();
-//     // WHEN
-//   const stack = new LogsAnomalyDetectorCdk.LogsAnomalyDetectorCdkStack(app, 'MyTestStack');
-//     // THEN
-//   const template = Template.fromStack(stack);
+describe('LogsAnomalyDetectorCdkStack', () => {
+  test('synthesizes all infrastructure resources', () => {
+    const app = createTestApp();
+    const stack = new LogsAnomalyDetectorCdkStack(app, 'TestStack', {
+      functionCode: lambda.Code.fromInline('# test stub'),
+    });
+    const template = Template.fromStack(stack);
 
-//   template.hasResourceProperties('AWS::SQS::Queue', {
-//     VisibilityTimeout: 300
-//   });
+    template.resourceCountIs('AWS::SQS::Queue', 4);
+    template.resourceCountIs('AWS::DynamoDB::Table', 1);
+    template.resourceCountIs('AWS::Lambda::Function', 1);
+  });
 });
