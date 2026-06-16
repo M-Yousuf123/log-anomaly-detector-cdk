@@ -6,7 +6,6 @@ from aws_lambda_powertools import Metrics
 from aws_lambda_powertools.metrics import MetricUnit
 
 from .config import Config
-from .protocols import MetricsEmitter
 
 
 class CloudWatchMetrics:

@@ -8,7 +8,6 @@ from pydantic import ValidationError
 
 from .errors import ErrorCode
 from .models import InboundLog, ValidationItemError
-from .protocols import LogValidator
 
 
 class DefaultLogValidator:
