@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from .models import EnrichedLog, InboundLog, Route
-from .protocols import LogEnricher
 
 
 class DefaultLogEnricher:

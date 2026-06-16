@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 
 from .models import InboundLog, LogLevel, Route
-from .protocols import LogRouter
 
 PRIORITY_LEVELS = frozenset({LogLevel.WARN, LogLevel.ERROR})
 
