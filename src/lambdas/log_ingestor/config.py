@@ -25,5 +25,5 @@ def load_config() -> Config:
     return Config(
         main_queue_url=main_queue_url,
         priority_queue_url=priority_queue_url,
-        service_name=os.environ.get("POWERTOOLS_SERVICE_NAME", "log-ingestor"),
+        service_name=os.environ.get("SERVICE_NAME", "log-ingestor"),
     )

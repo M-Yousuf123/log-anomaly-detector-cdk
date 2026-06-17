@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from pydantic import ValidationError
 
 from .errors import ErrorCode
 from .models import InboundLog, ValidationItemError
+
+logger = logging.getLogger(__name__)
 
 
 class DefaultLogValidator:
@@ -17,10 +20,12 @@ class DefaultLogValidator:
         try:
             return InboundLog.model_validate(raw), None
         except ValidationError as exc:
+            reason = _format_validation_error(exc)
+            logger.debug("Log validation failed index=%s reason=%s", index, reason)
             return None, ValidationItemError(
                 index=index,
                 code=ErrorCode.VALIDATION_ERROR,
-                reason=_format_validation_error(exc),
+                reason=reason,
             )
 
 

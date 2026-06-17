@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any, cast
 
 import boto3
-from aws_lambda_powertools import Tracer
 from botocore.exceptions import ClientError
 
 from .config import Config
 from .errors import EnqueueError
 from .models import EnrichedLog, Route
 
-tracer = Tracer()
+logger = logging.getLogger(__name__)
+
 SQS_BATCH_LIMIT = 10
 RETRYABLE_ERROR_CODES = frozenset(
     {
@@ -32,7 +33,6 @@ class SqsPublisher:
         self._config = config
         self._sqs: Any = sqs_client or boto3.client("sqs")
 
-    @tracer.capture_method
     def publish(self, logs: list[EnrichedLog]) -> None:
         if not logs:
             return
@@ -47,6 +47,12 @@ class SqsPublisher:
                     self._config.priority_queue_url
                     if route == Route.PRIORITY
                     else self._config.main_queue_url
+                )
+                logger.debug(
+                    "Publishing %s logs to %s queue url=%s",
+                    len(route_logs),
+                    route.value,
+                    queue_url,
                 )
                 self._publish_to_queue(queue_url, route_logs, fifo=route == Route.PRIORITY)
 
@@ -98,17 +104,37 @@ class SqsPublisher:
             try:
                 response = send_fn()
                 if self._has_batch_failures(response):
+                    failed = response.get("Failed", [])
+                    logger.error(
+                        "SQS batch returned partial failures failed_count=%s details=%s",
+                        len(failed),
+                        failed,
+                    )
                     raise EnqueueError("SQS batch returned partial failures")
                 return
             except ClientError as exc:
                 last_error = exc
+                error_code = exc.response.get("Error", {}).get("Code", "")
                 if not self._is_retryable(exc) or attempt == self._config.sqs_max_retries - 1:
+                    logger.error(
+                        "SQS send failed attempt=%s/%s error_code=%s",
+                        attempt + 1,
+                        self._config.sqs_max_retries,
+                        error_code,
+                    )
                     break
+                logger.warning(
+                    "Retryable SQS error attempt=%s/%s error_code=%s",
+                    attempt + 1,
+                    self._config.sqs_max_retries,
+                    error_code,
+                )
                 time.sleep(2**attempt * 0.1)
             except EnqueueError:
                 raise
             except Exception as exc:
                 last_error = exc
+                logger.error("Unexpected SQS publish error attempt=%s", attempt + 1, exc_info=exc)
                 break
 
         reason = str(last_error) if last_error else "unknown SQS error"

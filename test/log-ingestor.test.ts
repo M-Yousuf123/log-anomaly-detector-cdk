@@ -35,7 +35,7 @@ describe('LogIngestor', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
       FunctionName: 'anomaly-detector-log-ingestor',
       Runtime: 'python3.12',
-      Handler: 'handler.handler',
+      Handler: 'log_ingestor.handler.handler',
       Timeout: 30,
       MemorySize: 256,
       TracingConfig: { Mode: 'Active' },
