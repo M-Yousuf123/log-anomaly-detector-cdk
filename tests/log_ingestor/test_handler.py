@@ -1,4 +1,5 @@
 import json
+from unittest.mock import MagicMock
 
 from log_ingestor.app import LogIngestorApp
 from log_ingestor.config import Config
@@ -89,6 +90,8 @@ def test_sqs_failure_returns_503_and_metric(config: Config) -> None:
     assert metrics.enqueue_errors == 1
 
 
-def test_create_app_wires_dependencies(config: Config) -> None:
+def test_create_app_wires_dependencies(config: Config, mocker) -> None:
+    mocker.patch("log_ingestor.publisher.boto3.client", return_value=MagicMock())
+    mocker.patch("log_ingestor.metrics.boto3.client", return_value=MagicMock())
     app = create_app(config)
     assert isinstance(app.validator, DefaultLogValidator)

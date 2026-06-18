@@ -14,7 +14,6 @@ from log_ingestor.validator import DefaultLogValidator
 
 from factories import TEST_MAIN_QUEUE_URL, TEST_PRIORITY_QUEUE_URL, TEST_REGION
 
-os.environ.setdefault("POWERTOOLS_TRACE_DISABLED", "true")
 os.environ.setdefault("AWS_DEFAULT_REGION", TEST_REGION)
 os.environ.setdefault("MAIN_QUEUE_URL", TEST_MAIN_QUEUE_URL)
 os.environ.setdefault("PRIORITY_QUEUE_URL", TEST_PRIORITY_QUEUE_URL)

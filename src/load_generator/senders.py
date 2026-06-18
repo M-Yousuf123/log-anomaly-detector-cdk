@@ -2,21 +2,28 @@ from __future__ import annotations
 
 import argparse
 import json
+import ssl
 import urllib.error
 import urllib.request
 from typing import Any
 
 import boto3
+import certifi
 from botocore.exceptions import BotoCoreError, ClientError
 
 from load_generator.config import resolve_api_url
 from load_generator.models import LogSender, Transport
 
 
+def _ssl_context() -> ssl.SSLContext:
+    return ssl.create_default_context(cafile=certifi.where())
+
+
 class HttpLogSender:
     def __init__(self, api_url: str, timeout_s: float) -> None:
         self._url = f"{api_url}/logs"
         self._timeout_s = timeout_s
+        self._ssl_context = _ssl_context()
 
     def send_batch(
         self, logs: list[dict[str, Any]], correlation_id: str
@@ -32,7 +39,9 @@ class HttpLogSender:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(request, timeout=self._timeout_s) as response:
+            with urllib.request.urlopen(
+                request, timeout=self._timeout_s, context=self._ssl_context
+            ) as response:
                 body = json.loads(response.read().decode())
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode(errors="replace")

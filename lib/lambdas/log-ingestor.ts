@@ -27,7 +27,7 @@ export class LogIngestor extends Construct {
     const ingestorFunction = new lambda.Function(this, 'LogIngestorFunction', {
       functionName: 'anomaly-detector-log-ingestor',
       runtime: lambda.Runtime.PYTHON_3_12,
-      handler: 'handler.handler',
+      handler: 'log_ingestor.handler.handler',
       code:
         props.functionCode ??
         lambda.Code.fromAsset('src/lambdas/log_ingestor', {
@@ -36,17 +36,16 @@ export class LogIngestor extends Construct {
             command: [
               'bash',
               '-c',
-              'pip install -r requirements.txt -t /asset-output && cp -au . /asset-output',
+              'pip install -r requirements.txt -t /asset-output && mkdir -p /asset-output/log_ingestor && cp -au . /asset-output/log_ingestor/',
             ],
           },
         }),
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
-      tracing: lambda.Tracing.ACTIVE,
       environment: {
         MAIN_QUEUE_URL: mainQueueUrl,
         PRIORITY_QUEUE_URL: priorityQueueUrl,
-        POWERTOOLS_SERVICE_NAME: 'log-ingestor',
+        SERVICE_NAME: 'log-ingestor',
       },
     });
 
@@ -54,6 +53,13 @@ export class LogIngestor extends Construct {
       new iam.PolicyStatement({
         actions: ['sqs:SendMessage', 'sqs:SendMessageBatch'],
         resources: [mainQueueArn, priorityQueueArn],
+      }),
+    );
+
+    ingestorFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['cloudwatch:PutMetricData'],
+        resources: ['*'],
       }),
     );
 
