@@ -1,3 +1,6 @@
+import { execSync } from 'child_process';
+import * as path from 'path';
+
 import * as cdk from 'aws-cdk-lib/core';
 import { Construct } from 'constructs';
 import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
@@ -5,6 +8,42 @@ import * as apigwv2Integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations'
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { BillingTag, TagKey, TagName } from '../constants';
+
+const LOG_INGESTOR_SOURCE = path.join(
+  __dirname,
+  '../../src/lambdas/log_ingestor',
+);
+const LOG_INGESTOR_MODULE = 'log_ingestor';
+
+function requireDocker(): void {
+  try {
+    execSync('docker info', { stdio: 'ignore' });
+  } catch {
+    throw new Error(
+      'Docker is required to bundle the log-ingestor Lambda. ' +
+        'Install Docker Engine (https://docs.docker.com/get-docker/) and ensure it is running, ' +
+        'then run cdk deploy again.',
+    );
+  }
+}
+
+function logIngestorFunctionCode(): lambda.Code {
+  requireDocker();
+  return lambda.Code.fromAsset(LOG_INGESTOR_SOURCE, {
+    bundling: {
+      image: lambda.Runtime.PYTHON_3_12.bundlingImage,
+      command: [
+        'bash',
+        '-c',
+        [
+          'pip install -r requirements.txt -t /asset-output',
+          `mkdir -p /asset-output/${LOG_INGESTOR_MODULE}`,
+          `cp -au . /asset-output/${LOG_INGESTOR_MODULE}/`,
+        ].join(' && '),
+      ],
+    },
+  });
+}
 
 export interface LogIngestorProps {
   readonly mainQueueUrl: string;
@@ -27,19 +66,9 @@ export class LogIngestor extends Construct {
     const ingestorFunction = new lambda.Function(this, 'LogIngestorFunction', {
       functionName: 'anomaly-detector-log-ingestor',
       runtime: lambda.Runtime.PYTHON_3_12,
+      architecture: lambda.Architecture.ARM_64,
       handler: 'log_ingestor.handler.handler',
-      code:
-        props.functionCode ??
-        lambda.Code.fromAsset('src/lambdas/log_ingestor', {
-          bundling: {
-            image: lambda.Runtime.PYTHON_3_12.bundlingImage,
-            command: [
-              'bash',
-              '-c',
-              'pip install -r requirements.txt -t /asset-output && mkdir -p /asset-output/log_ingestor && cp -au . /asset-output/log_ingestor/',
-            ],
-          },
-        }),
+      code: props.functionCode ?? logIngestorFunctionCode(),
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
       environment: {
